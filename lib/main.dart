@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:frontend/home_page.dart';
-import 'package:frontend/signup_page.dart';
+import 'package:project/home_page.dart';
+import 'package:project/signup_page.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:frontend/firebase_options.dart';
+import 'package:project/firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
+
 
 void main() async
 {
