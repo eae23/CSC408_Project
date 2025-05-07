@@ -5,8 +5,10 @@ import 'package:dotted_border/dotted_border.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:frontend/utils.dart';
 import 'package:uuid/uuid.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:geolocator/geolocator.dart';
 
 class AddNewAttraction extends StatefulWidget
 {
@@ -42,8 +44,7 @@ class _AddNewAttractionState extends State<AddNewAttraction>
     try
     {
       final id = const Uuid().v4();
-      final imagesRef =
-          FirebaseStorage.instance.ref('images').child(id);
+      final imagesRef = FirebaseStorage.instance.ref('images').child(id);
 
       final uploadAttraction = imagesRef.putFile(file!);
       final attractionSnapshot = await uploadAttraction;
@@ -66,6 +67,82 @@ class _AddNewAttractionState extends State<AddNewAttraction>
     {
       print(e);
     }
+  }
+
+  Future<File?> selectImage() async
+  {
+    final picker = ImagePicker();
+
+    return showModalBottomSheet<File?>(
+      context: context,
+      builder: (BuildContext context)
+      {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Choose from Gallery'),
+                onTap: () async
+                {
+                  final picked = await picker.pickImage(source: ImageSource.gallery);
+                  Navigator.pop(context, picked != null ? File(picked.path) : null);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Take a Photo'),
+                onTap: () async
+                {
+                  final picked = await picker.pickImage(source: ImageSource.camera);
+                  Navigator.pop(context, picked != null ? File(picked.path) : null);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _getCurrentLocation() async
+  {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled)
+    {
+      await Geolocator.openLocationSettings();
+      return;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied)
+    {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+
+    if (permission == LocationPermission.deniedForever)
+    {
+      return;
+    }
+
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
+    setState(()
+    {
+      latitudeController.text = position.latitude.toString();
+      longitudeController.text = position.longitude.toString();
+    });
+  }
+
+  @override
+  void initState()
+  {
+    super.initState();
+    _getCurrentLocation();
   }
 
   @override
@@ -134,26 +211,26 @@ class _AddNewAttractionState extends State<AddNewAttraction>
               ),
               const SizedBox(height: 10),
               TextFormField(
-                controller: latitudeController,
+                controller: ratingController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
-                  hintText: 'Latitude',
+                  hintText: 'Rating (0 - 5)',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: latitudeController,
+                readOnly: true,
+                decoration: const InputDecoration(
+                  labelText: 'Latitude',
                 ),
               ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: longitudeController,
-                keyboardType: TextInputType.number,
+                readOnly: true,
                 decoration: const InputDecoration(
-                  hintText: 'Longitude',
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: ratingController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  hintText: 'Rating (0 - 5)',
+                  labelText: 'Longitude',
                 ),
               ),
             ],

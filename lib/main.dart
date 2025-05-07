@@ -1,30 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:project/home_page.dart';
 import 'package:project/signup_page.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:project/firebase_options.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
+import 'firebase_options.dart';
+import 'package:project/add_new_attraction.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:project/view_attractions.dart';
+import 'package:project/albums.dart';
 
+final themeNotifier = ThemeNotifier();
 
 void main() async
 {
-  WidgetFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform,);
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  runApp(ValueListenableBuilder<ThemeMode>(
+    valueListenable: themeNotifier,
+    builder: (context, themeMode, _)
+    {
+      return MyApp(themeMode: themeMode);
+    },
+  ));
 }
 
 class MyApp extends StatelessWidget
 {
-  const MyApp({super.key});
+  final ThemeMode themeMode;
+  const MyApp({super.key, required this.themeMode});
 
   @override
   Widget build(BuildContext context)
   {
     return MaterialApp(
+      themeMode: themeMode,
+      darkTheme: ThemeData.dark(),
       theme: ThemeData(
         fontFamily: 'Cera Pro',
         elevatedButtonTheme: ElevatedButtonThemeData(
@@ -47,7 +59,7 @@ class MyApp extends StatelessWidget
           ),
           focusedBorder: OutlineInputBorder(
             borderSide: const BorderSide(
-              // color: Pallete.gradient2,
+              color: Colors.blue,
               width: 3,
             ),
             borderRadius: BorderRadius.circular(10),
@@ -55,16 +67,19 @@ class MyApp extends StatelessWidget
         ),
       ),
       debugShowCheckedModeBanner: false,
-      home: HomeScreen(
+      home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+        builder: (context, snapshot)
+        {
+          if (snapshot.connectionState == ConnectionState.waiting)
+          {
             return const Center(
               child: CircularProgressIndicator(),
             );
           }
-          if (snapshot.data != null) {
-            return const MyHomePage();
+          if (snapshot.data != null)
+          {
+            return const HomeScreen();
           }
           return const SignUpPage();
         },
@@ -165,102 +180,98 @@ class HomeScreen extends StatelessWidget
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ElevatedButton(
-              child: Text('Add Attraction'),
-              actions: [
-                IconButton(
-                  onPressed: ()
+            ElevatedButton.icon(
+              onPressed: ()
+              {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddNewAttraction(),
+                  ),
+                );
+              },
+              icon: const Icon(CupertinoIcons.add),
+              label: const Text('Add Attraction'),
+            ),
+
+            ElevatedButton.icon(
+              onPressed: ()
+              {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ViewAttractionsPage(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.map),
+              label: const Text('View All Attractions'),
+            ),
+
+            ElevatedButton.icon(
+              onPressed: ()
+              {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddToAlbumPage(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.photo_album_outlined),
+              label: const Text('Add to Album'),
+            ),
+
+            const SizedBox(height: 16),
+
+            StreamBuilder(
+              stream: FirebaseFirestore.instance
+                  .collection("locations")
+                  .where('creator', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
+                  .snapshots(),
+              builder: (context, snapshot)
+              {
+                if (snapshot.connectionState == ConnectionState.waiting)
+                {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData)
+                {
+                  return const Text('No data here :(');
+                }
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: snapshot.data!.docs.length,
+                  itemBuilder: (context, index)
                   {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AddNewAttraction(),
-                      ),
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: AttractionCard(
+                            headerText: snapshot.data!.docs[index]['title'],
+                            descriptionText: snapshot.data!.docs[index]['description'],
+                          ),
+                        ),
+                        Container(
+                          height: 50,
+                          width: 50,
+                          decoration: BoxDecoration(
+                            color: strengthenColor(const Color.fromRGBO(246, 222, 194, 1), 0.69),
+                            image: snapshot.data!.docs[index]['imageURL'] == null
+                                ? null
+                                : DecorationImage(
+                                    image: NetworkImage(snapshot.data!.docs[index]['imageURL']),
+                                  ),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const Padding(padding: EdgeInsets.all(12.0)),
+                      ],
                     );
                   },
-                  icon: const Icon(
-                    CupertinoIcons.add,
-                  ),
-                ),
-              ],
-              body: Center(
-                child: Column(
-                  children: [
-                    StreamBuilder(
-                      stream: FirebaseFirestore.instance
-                          .collection("locations")
-                          .where('creator', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
-                          .snapshots(),
-                      builder: (context, snapshot)
-                      {
-                        if (snapshot.connectionState == ConnectionState.waiting)
-                        {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
-                        if (!snapshot.hasData)
-                        {
-                          return const Text('No data here :(');
-                        }
-
-                        return Expanded(
-                          child: ListView.builder(
-                            itemCount: snapshot.data!.docs.length,
-                            itemBuilder: (context, index)
-                            {
-                              return Row(
-                                children: [
-                                  Expanded(
-                                    child: AttractionCard(
-                                      headerText:
-                                          snapshot.data!.docs[index].data()['title'],
-                                      descriptionText: snapshot.data!.docs[index]
-                                          .data()['description'],
-                                    ),
-                                  ),
-                                  Container(
-                                    height: 50,
-                                    width: 50,
-                                    decoration: BoxDecoration(
-                                      color: strengthenColor(
-                                        const Color.fromRGBO(246, 222, 194, 1),
-                                        0.69,
-                                      ),
-                                      image: snapshot.data!.docs[index]
-                                                  .data()['imageURL'] ==
-                                              null
-                                          ? null
-                                          : DecorationImage(
-                                              image: NetworkImage(
-                                                snapshot.data!.docs[index]
-                                                    .data()['imageURL'],
-                                              ),
-                                            ),
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                                  const Padding(
-                                    padding: EdgeInsets.all(12.0),
-                                  )
-                                ],
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {},
-              child: Text('View Attractions'),
-            ),
-            ElevatedButton(
-              onPressed: () {},
-              child: Text('Nearby Attractions'),
+                );
+              },
             ),
           ],
         ),
@@ -291,16 +302,154 @@ class AppDrawer extends StatelessWidget
             ),
           ),
           ListTile(
-            leading: Icon(Icons.info),
-            title: Text('About'),
-            onTap: () {},
+            leading: Icon(Icons.settings),
+            title: const Text('Settings'),
+            onTap: ()
+            {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsPage()),
+              );
+            },
           ),
           ListTile(
-            leading: Icon(Icons.settings),
-            title: Text('Settings'),
-            onTap: () {},
+            leading: const Icon(Icons.info),
+            title: const Text('About'),
+            onTap: ()
+            {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AboutPage()),
+              );
+            },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class SettingsPage extends StatefulWidget
+{
+  const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage>
+{
+  bool isDarkMode = themeNotifier.value == ThemeMode.dark;
+
+  @override
+  Widget build(BuildContext context)
+  {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Settings')),
+      body: SwitchListTile(
+        title: const Text('Dark Mode'),
+        value: isDarkMode,
+        onChanged: (value)
+        {
+          setState(() => isDarkMode = value);
+          themeNotifier.toggleTheme(value);
+        },
+      ),
+    );
+  }
+}
+
+class AttractionCard extends StatelessWidget
+{
+  final String headerText;
+  final String descriptionText;
+
+  const AttractionCard({
+    super.key,
+    required this.headerText,
+    required this.descriptionText,
+  });
+
+  @override
+  Widget build(BuildContext context)
+  {
+    return Card(
+      margin: const EdgeInsets.all(12),
+      child: ListTile(
+        title: Text(headerText),
+        subtitle: Text(descriptionText),
+      ),
+    );
+  }
+}
+
+class ThemeNotifier extends ValueNotifier<ThemeMode>
+{
+  ThemeNotifier() : super(ThemeMode.light);
+
+  void toggleTheme(bool isDark)
+  {
+    value = isDark ? ThemeMode.dark : ThemeMode.light;
+  }
+}
+
+Color strengthenColor(Color color, double amount)
+{
+  assert(amount >= 0 && amount <= 1);
+  return Color.fromRGBO(
+    (color.r * amount).clamp(0, 255).toInt(),
+    (color.g * amount).clamp(0, 255).toInt(),
+    (color.b * amount).clamp(0, 255).toInt(),
+    1,
+  );
+}
+
+class AboutPage extends StatelessWidget
+{
+  const AboutPage({super.key});
+
+  @override
+  Widget build(BuildContext context)
+  {
+    return Scaffold(
+      appBar: AppBar(title: const Text('About')),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: ListView(
+          children: const [
+            Text(
+              'Photo Journal App',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 12),
+            Text(
+              'This app allows users to record and explore attractions and personal travel memories. '
+              'You can create attractions with photos, geotag them with your GPS, view them on a map, '
+              'add them to albums, and share feedback with comments and ratings.',
+              style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 24),
+            Text(
+              'Technology',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 12),
+            Text('• Flutter app'),
+            Text('• Widgets:'),
+            Padding(
+              padding: EdgeInsets.only(left: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('◦ GPS'),
+                  Text('◦ Geocoding'),
+                  Text('◦ Firebase connector'),
+                  Text('◦ Camera'),
+                ],
+              ),
+            ),
+            SizedBox(height: 12),
+            Text('• Database: Firebase'),
+          ],
+        ),
       ),
     );
   }

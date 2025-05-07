@@ -1,8 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:frontend/login_page.dart';
+import 'package:project/login_page.dart';
 
-class SignUpPage extends StatefulWidget {
+class SignUpPage extends StatefulWidget
+{
   static route() => MaterialPageRoute(
         builder: (context) => const SignUpPage(),
       );
@@ -12,7 +13,8 @@ class SignUpPage extends StatefulWidget {
   State<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _SignUpPageState extends State<SignUpPage> {
+class _SignUpPageState extends State<SignUpPage>
+{
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final formKey = GlobalKey<FormState>();
@@ -24,7 +26,8 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
-  Future<void> createUserWithEmailAndPassword() async {
+  Future<void> createUserWithEmailAndPassword() async
+  {
     try {
       final userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -32,13 +35,15 @@ class _SignUpPageState extends State<SignUpPage> {
         password: passwordController.text.trim(),
       );
       print(userCredential.user?.uid);
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException catch (e)
+    {
       print(e.message);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context)
+  {
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.all(15.0),
@@ -72,7 +77,8 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () async {
+                onPressed: () async
+                {
                   await createUserWithEmailAndPassword();
                 },
                 child: const Text(
@@ -85,7 +91,8 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               const SizedBox(height: 20),
               GestureDetector(
-                onTap: () {
+                onTap: ()
+                {
                   Navigator.push(context, LoginPage.route());
                 },
                 child: RichText(
