@@ -1,3 +1,3 @@
 # project
 
-A new Flutter project.
+Final Flutter project.
